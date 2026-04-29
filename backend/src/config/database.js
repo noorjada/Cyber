@@ -1,16 +1,8 @@
 import pg from 'pg';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const envPath = join(__dirname, '../../.env');
-dotenv.config({ path: envPath });
-
-console.log('Loading .env from:', envPath);
-console.log('POSTGRES_PASSWORD exists:', !!process.env.POSTGRES_PASSWORD);
+console.log('POSTGRES_HOST:', process.env.POSTGRES_HOST);
+console.log('POSTGRES_PORT:', process.env.POSTGRES_PORT);
+console.log('POSTGRES_USER:', process.env.POSTGRES_USER);
 
 const { Pool } = pg;
 
@@ -19,10 +11,11 @@ const pool = new Pool({
     database: process.env.ENV === 'test' ? process.env.POSTGRES_TEST_DB : process.env.POSTGRES_DB,
     user: process.env.POSTGRES_USER || 'postgres',
     password: process.env.POSTGRES_PASSWORD || '',
-    port: 4000,
+    port: process.env.POSTGRES_PORT || 5432,
+    ssl: process.env.POSTGRES_SSL === 'require' ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 pool.on('connect', () => {

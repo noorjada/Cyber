@@ -1,8 +1,10 @@
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Shield } from "lucide-react";
 import { useState } from "react";
-import { Shield, Eye, EyeOff, Lock, Mail, ArrowRight, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,11 +13,15 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setNeedsVerification(false);
     setIsLoading(true);
 
     try {
@@ -33,16 +39,21 @@ export function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        if (response.status === 403 && data.needsVerification) {
+          setNeedsVerification(true);
+          setError("Please verify your account first. Check your email for the verification link.");
+        } else {
+          throw new Error(data.message || "Login failed");
+        }
+        return;
       }
 
-      setSuccess("Login successful!");
-      localStorage.setItem("token", data.data.token);
-      localStorage.setItem("user", JSON.stringify(data.data.user));
+      setSuccess("Login successful! Redirecting to dashboard...");
+      login(data.data.user, data.data.token);
 
-      // Redirect to home after 1 second
+      // Redirect to dashboard after 1 second
       setTimeout(() => {
-        window.location.href = "/";
+        navigate("/dashboard");
       }, 1000);
     } catch (err: any) {
       setError(err.message || "Invalid email or password");
@@ -123,17 +134,33 @@ export function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Error Message */}
+            {/* Error Message with Verification Check */}
             {error && (
               <div
-                className="p-3 rounded-lg text-sm"
+                className="p-3 rounded-lg text-sm flex gap-3"
                 style={{
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  color: "#ef4444",
+                  background: needsVerification
+                    ? "rgba(251, 191, 36, 0.1)"
+                    : "rgba(239, 68, 68, 0.1)",
+                  border: needsVerification
+                    ? "1px solid rgba(251, 191, 36, 0.3)"
+                    : "1px solid rgba(239, 68, 68, 0.3)",
+                  color: needsVerification ? "#fbbf24" : "#ef4444",
                 }}
               >
-                {error}
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <p>{error}</p>
+                  {needsVerification && (
+                    <a
+                      href="/verify-account"
+                      style={{ color: "#fbbf24", textDecoration: "underline" }}
+                      className="text-xs mt-1 inline-block hover:text-yellow-300"
+                    >
+                      Verify your account now
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 
